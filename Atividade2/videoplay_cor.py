@@ -8,9 +8,11 @@ import time
 #cap = cv2.VideoCapture('hall_box_battery_mp2.mp4')
 # As 3 próximas linhas são para usar a webcam
 cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 266)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 200)
+height = 700
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1.33*height)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
 
+H_caixa = 36,5
 
 def identifica_cor(frame):
     '''
@@ -22,13 +24,20 @@ def identifica_cor(frame):
     # Veja se este intervalo de cores está bom
     frame_hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
 
-    cor_menor = np.array([0, 50, 50])
-    cor_maior = np.array([8, 255, 255])
+    frame = cv2.blur(frame,(5,5)) # Tira ruido
+
+    cor_menor = np.array([0, int(0.50*255), int(0.60*255)])
+    cor_maior = np.array([18, 255, 255])
+
     segmentado_cor = cv2.inRange(frame_hsv, cor_menor, cor_maior)
 
     # Será possível limpar a imagem segmentado_cor?
     # Pesquise: https://docs.opencv.org/trunk/d9/d61/tutorial_py_morphological_ops.html
 
+    kernel = np.ones((11,11),np.uint8)
+
+    '''Optei por usar o Open '''
+    frame = cv2.morphologyEx(frame, cv2.MORPH_OPEN, kernel)
 
     # Encontramos os contornos na máscara e selecionamos o de maior área
     img_out, contornos, arvore = cv2.findContours(segmentado_cor.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -50,6 +59,9 @@ def identifica_cor(frame):
 
     # Encontramos o centro do contorno fazendo a média de todos seus pontos.
     if not maior_contorno is None :
+
+        # print(maior_contorno)
+
         cv2.drawContours(frame, [maior_contorno], -1, [0, 0, 255], 5)
         maior_contorno = np.reshape(maior_contorno, (maior_contorno.shape[0], 2))
         media = maior_contorno.mean(axis=0)
@@ -58,6 +70,21 @@ def identifica_cor(frame):
     else:
         media = (0, 0)
 
+    '''Pega cada item Y da lista maior_contorno e salva em outra lista pra
+        depois pegar o maximo e minimo'''
+    array_y=[]
+    distancia_cm = ""
+    if not maior_contorno is None:
+        for i in range (len(maior_contorno)):
+            elemento = maior_contorno[i]
+            array_y.append(elemento[1])
+        h_pixel = max(array_y)-min(array_y)
+        # print("Altura da caixa em Pixels: {0}".format(h_pixel))
+
+        distancia_cm = str(27370/h_pixel) + "cm"
+        # print(distancia_cm + "cm")
+
+        cv2.putText(frame, distancia_cm, (10,500),cv2.FONT_HERSHEY_SIMPLEX,1.5,color=(255,255,255))
     cv2.imshow('', frame)
     cv2.imshow('imagem in_range', segmentado_cor)
     cv2.waitKey(1)
@@ -69,7 +96,7 @@ def identifica_cor(frame):
 
 while(True):
     # Capture frame-by-frame
-    print("Novo frame")
+    # print("Novo frame")
     ret, frame = cap.read()
 
 
@@ -80,11 +107,11 @@ while(True):
     #More drawing functions @ http://docs.opencv.org/2.4/modules/core/doc/drawing_functions.html
 
     # Display the resulting frame
-    cv2.imshow('original',frame)
+    # cv2.imshow('original',frame)
 
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
-    print("No circles were found")
+    # print("Distancia: {0}cm".format(distancia_cm))
 # When everything done, release the capture
 cap.release()
 cv2.destroyAllWindows()
