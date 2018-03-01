@@ -74,7 +74,7 @@ def identifica_cor(frame):
         depois pegar o maximo e minimo'''
     array_y=[]
     distancia_cm = ""
-    if not maior_contorno is None:
+    if not maior_contorno is None: #Para não dar erro caso não ache o maior_contorno
         for i in range (len(maior_contorno)):
             elemento = maior_contorno[i]
             array_y.append(elemento[1])
